@@ -13,6 +13,25 @@ const { Camera, Filesystem, Storage } = Plugins;
   providedIn: 'root'
 })
 
+
+
+export class PhotoService {
+
+  constructor(){}
+
+  public async addNewPhoto(){}
+  
+  public async loadSavedPhoto(){}
+
+}
+
+
+
+
+
+
+
+
 export class PhotoService {
   public photos: Photo[] = [];
   private PHOTO_STORAGE: string = "photos";
@@ -26,24 +45,20 @@ export class PhotoService {
     // Retrieve cached photo array data
     const photos = await Storage.get({ key: this.PHOTO_STORAGE });
     this.photos = JSON.parse(photos.value) || [];
-  
     
+    console.log("Photo Storage: " + JSON.stringify(this.photos));
+
     // Easiest way to detect when running on the web:
     // “when the platform is NOT hybrid, do this”
     if (!this.platform.is('hybrid')) {
       // Display the photo by reading into base64 format
       for (let photo of this.photos) {
         // Read each saved photo's data from the Filesystem
-        console.log ('hi, in for loop')
         
         const readFile = await Filesystem.readFile({
             path: photo.filepath,
             directory: FilesystemDirectory.Data
         });
-        
-        photo.base64
-        photo.filepath
-        photo.webviewPath
 
        //console.log ("file: " + readFile.data);
 
@@ -52,28 +67,38 @@ export class PhotoService {
         //photo.base64 = "hello";
         
       }
-
       console.log ("End of loadSaved() if...")
     }
-    
   }
+  
 
   public async addNewToGallery() {
+    // Called when user clicks on Photo Capture button
+    
+    console.log("Gettting Camera.getPhoto...");
+
     // Take a photo
     const capturedPhoto = await Camera.getPhoto({
       resultType: CameraResultType.Uri, 
       source: CameraSource.Camera, 
       quality: 100 
     });
+    console.log("Got Camera.getPhoto: "+ capturedPhoto);
+
+    console.log("Saving Photo...");
 
     // Save the picture and add it to photo collection
     const savedImageFile = await this.savePicture(capturedPhoto);
     this.photos.unshift(savedImageFile);
 
+    //console.log("Got Camera.getPhoto: "+ capturedPhoto);
+    
     this.photos.unshift({
       filepath: "soon...",
       webviewPath: capturedPhoto.webPath
     });
+    
+    
 
     Storage.set({
       key: this.PHOTO_STORAGE,
@@ -89,9 +114,6 @@ export class PhotoService {
         }))
     });
   }
-
-
-
 
   // Save picture to file on device
   private async savePicture(cameraPhoto: CameraPhoto) {
@@ -122,6 +144,26 @@ export class PhotoService {
         webviewPath: cameraPhoto.webPath
       };
     }
+  }
+
+  public async deletePicture(photo: Photo, position: number) {
+    // Remove this photo from the Photos reference data array
+    this.photos.splice(position, 1);
+  
+    // Update photos array cache by overwriting the existing photo array
+    Storage.set({
+      key: this.PHOTO_STORAGE,
+      value: JSON.stringify(this.photos)
+    });
+  
+    // delete photo file from filesystem
+    const filename = photo.filepath
+                        .substr(photo.filepath.lastIndexOf('/') + 1);
+  
+    await Filesystem.deleteFile({
+      path: filename,
+      directory: FilesystemDirectory.Data
+    });
   }
 
 
